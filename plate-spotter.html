@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Plate Spotter</title>
+<style>
+  :root {
+    --asphalt: #1c2321;
+    --asphalt-2: #262f2c;
+    --line-yellow: #f5c518;
+    --highway-green: #1e5631;
+    --highway-green-2: #2a7a44;
+    --chrome: #d8dcd6;
+    --chrome-dim: #9aa39c;
+    --plate-white: #eef1ea;
+    --danger: #c0392b;
+    --font-display: "Rockwell", "Arial Narrow", Impact, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "Courier New", monospace;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--asphalt);
+    color: var(--chrome);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 38px, rgba(245,197,24,0.08) 38px, rgba(245,197,24,0.08) 70px);
+    padding-bottom: 40px;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(180deg, var(--highway-green) 0%, var(--highway-green-2) 100%);
+    border-bottom: 4px solid var(--plate-white);
+    padding: 14px 16px 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.75);
+    margin: 0 0 2px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    color: #fff;
+    margin: 0 0 10px;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+
+  .scoreboard {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .plate {
+    background: var(--plate-white);
+    border-radius: 6px;
+    border: 2px solid #7f8a7f;
+    padding: 6px 10px;
+    flex: 1;
+    text-align: center;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .plate .num {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--asphalt);
+    line-height: 1;
+  }
+
+  .plate .lbl {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #55605a;
+    margin-top: 2px;
+  }
+
+  .progress-track {
+    height: 6px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--line-yellow);
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+
+  main {
+    padding: 16px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .controls input {
+    flex: 1;
+    background: var(--asphalt-2);
+    border: 1px solid #3a453f;
+    color: var(--chrome);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: var(--font-body);
+  }
+  .controls input::placeholder { color: var(--chrome-dim); }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+  .reset-btn:active { background: rgba(192,57,43,0.15); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .state-card {
+    position: relative;
+    background: var(--plate-white);
+    border-radius: 8px;
+    border: 2px solid #7f8a7f;
+    padding: 10px 10px 8px;
+    text-align: left;
+    color: var(--asphalt);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.05), 0 3px 6px rgba(0,0,0,0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+  }
+
+  .state-card::before {
+    content: attr(data-abbr);
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    color: #8a938c;
+  }
+
+  .state-card .name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.15;
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    min-height: 34px;
+  }
+
+  .state-card .tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7a847d;
+  }
+
+  .state-card.spotted {
+    background: var(--line-yellow);
+    border-color: #c9a30f;
+    transform: scale(0.98);
+  }
+  .state-card.spotted .name { color: var(--asphalt); }
+  .state-card.spotted .tag { color: #6b5a05; }
+  .state-card.spotted::after {
+    content: "✓ SPOTTED";
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #4a3d02;
+  }
+
+  .state-card:active { transform: scale(0.95); }
+
+  .hidden { display: none !important; }
+
+  footer {
+    text-align: center;
+    padding: 20px 16px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--chrome-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--line-yellow);
+    color: var(--asphalt);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 50;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Road Trip Game</p>
+  <h1>Plate Spotter</h1>
+  <div class="scoreboard">
+    <div class="plate">
+      <div class="num" id="spottedCount">0</div>
+      <div class="lbl">Spotted</div>
+    </div>
+    <div class="plate">
+      <div class="num" id="remainingCount">50</div>
+      <div class="lbl">Remaining</div>
+    </div>
+    <div class="plate">
+      <div class="num" id="pctCount">0%</div>
+      <div class="lbl">Complete</div>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+</header>
+
+<main>
+  <div class="controls">
+    <input type="text" id="searchBox" placeholder="Search a state...">
+    <button class="reset-btn" id="resetBtn">RESET</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>50 US STATES · TAP WHEN YOU SPOT THE PLATE</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STATES = [
+  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+  "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
+  "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
+  "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada",
+  "New Hampshire","New Jersey","New Mexico","New York","North Carolina",
+  "North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island",
+  "South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont",
+  "Virginia","Washington","West Virginia","Wisconsin","Wyoming"
+];
+
+const NICKNAMES = {
+  "Alabama":"Yellowhammer","Alaska":"The Last Frontier","Arizona":"Grand Canyon",
+  "Arkansas":"Natural State","California":"Golden State","Colorado":"Centennial",
+  "Connecticut":"Constitution","Delaware":"First State","Florida":"Sunshine",
+  "Georgia":"Peach State","Hawaii":"Aloha State","Idaho":"Gem State",
+  "Illinois":"Prairie State","Indiana":"Hoosier State","Iowa":"Hawkeye",
+  "Kansas":"Sunflower State","Kentucky":"Bluegrass","Louisiana":"Pelican State",
+  "Maine":"Pine Tree","Maryland":"Old Line","Massachusetts":"Bay State",
+  "Michigan":"Great Lakes","Minnesota":"North Star","Mississippi":"Magnolia",
+  "Missouri":"Show-Me","Montana":"Big Sky","Nebraska":"Cornhusker",
+  "Nevada":"Silver State","New Hampshire":"Granite State","New Jersey":"Garden State",
+  "New Mexico":"Land of Enchantment","New York":"Empire State","North Carolina":"Tar Heel",
+  "North Dakota":"Peace Garden","Ohio":"Buckeye","Oklahoma":"Sooner State",
+  "Oregon":"Beaver State","Pennsylvania":"Keystone","Rhode Island":"Ocean State",
+  "South Carolina":"Palmetto","South Dakota":"Mount Rushmore","Tennessee":"Volunteer",
+  "Texas":"Lone Star","Utah":"Beehive State","Vermont":"Green Mountain",
+  "Virginia":"Old Dominion","Washington":"Evergreen","West Virginia":"Mountain State",
+  "Wisconsin":"Badger State","Wyoming":"Equality State"
+};
+
+function abbr(state) {
+  const map = {"Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+  "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+  "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS",
+  "Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA",
+  "Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT",
+  "Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM",
+  "New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK",
+  "Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC",
+  "South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT",
+  "Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY"};
+  return map[state] || "";
+}
+
+let spotted = new Set();
+let storageOk = true;
+
+async function loadState() {
+  try {
+    const result = await window.storage.get('plate-spotter-progress', false);
+    if (result && result.value) {
+      const arr = JSON.parse(result.value);
+      spotted = new Set(arr);
+    }
+  } catch (e) {
+    storageOk = true; // key just doesn't exist yet, that's fine
+  }
+  render();
+}
+
+async function saveState() {
+  try {
+    await window.storage.set('plate-spotter-progress', JSON.stringify([...spotted]), false);
+  } catch (e) {
+    // silently continue in-memory only
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 1400);
+}
+
+function toggleState(state) {
+  if (spotted.has(state)) {
+    spotted.delete(state);
+  } else {
+    spotted.add(state);
+    showToast(abbr(state) + " spotted! " + spotted.size + "/50");
+  }
+  saveState();
+  render();
+}
+
+function render() {
+  const query = document.getElementById('searchBox').value.trim().toLowerCase();
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  const sorted = [...STATES].sort((a, b) => {
+    const aSpotted = spotted.has(a), bSpotted = spotted.has(b);
+    if (aSpotted !== bSpotted) return aSpotted ? 1 : -1;
+    return a.localeCompare(b);
+  });
+
+  sorted.forEach(state => {
+    if (query && !state.toLowerCase().includes(query)) return;
+    const isSpotted = spotted.has(state);
+    const card = document.createElement('button');
+    card.className = 'state-card' + (isSpotted ? ' spotted' : '');
+    card.setAttribute('data-abbr', abbr(state));
+    card.innerHTML = `<span class="name">${state}</span><span class="tag">${NICKNAMES[state] || ''}</span>`;
+    card.addEventListener('click', () => toggleState(state));
+    grid.appendChild(card);
+  });
+
+  document.getElementById('spottedCount').textContent = spotted.size;
+  document.getElementById('remainingCount').textContent = 50 - spotted.size;
+  const pct = Math.round((spotted.size / 50) * 100);
+  document.getElementById('pctCount').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+document.getElementById('searchBox').addEventListener('input', render);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (spotted.size === 0) return;
+  if (confirm('Reset all spotted plates?')) {
+    spotted.clear();
+    saveState();
+    render();
+  }
+});
+
+loadState();
+</script>
+
+</body>
+</html>
